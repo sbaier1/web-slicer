@@ -1,0 +1,31 @@
+{
+  "layerHeight": 0.2,
+  "firstLayerHeight": 0.24,
+  "wallPerimeters": 3,
+  "topSolidLayers": 4,
+  "bottomSolidLayers": 3,
+  "infillDensity": 15,
+  "infillPattern": "gyroid",
+  "outerWallSpeed": 60,
+  "infillSpeed": 120,
+  "travelSpeed": 200,
+  "retractionDistance": 0.8,
+  "retractionSpeed": 40,
+  "nozzleTemp": 210,
+  "bedTemp": 60,
+  "enableSupports": false,
+  "supportStyle": "normal",
+  "supportAngle": 45,
+  "startGCode": "START_PRINT",
+  "endGCode": "END_PRINT",
+  "layerChangeGCode": ";AFTER_LAYER_CHANGE",
+  "printerConnection": {
+    "type": "moonraker",
+    "url": "",
+    "apiKey": ""
+  },
+  "printerUrl": "",
+  "printerType": "moonraker",
+  "apiKey": "",
+  "startPrint": true
+}

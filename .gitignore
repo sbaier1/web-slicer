@@ -1,0 +1,25 @@
+# Node dependencies & build artifacts
+node_modules/
+dist/
+build/
+*.log
+
+# Python virtual environment & cache
+server/venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Operating System & IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local test & debug scratch files
+debug-stl.js
+test-z-fix.js
+test-real-stl.js
+test-remote-orca-api.js
+test_trimesh_slicing.py
+/tmp/
