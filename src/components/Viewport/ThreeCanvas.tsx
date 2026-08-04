@@ -137,7 +137,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
             </div>
             <h3 className="text-white font-semibold mb-1">Build Plate is Empty</h3>
             <p className="text-slate-400 text-xs leading-relaxed">
-              Drag & drop STL or 3MF files anywhere, or click <span className="text-blue-400 font-medium">Add Model</span> / <span className="text-blue-400 font-medium">Samples</span> in the header to get started!
+              Drag & drop STL, OBJ, or 3MF files anywhere, or click <span className="text-blue-400 font-medium">Add Model</span> / <span className="text-blue-400 font-medium">Samples</span> in the header to get started!
             </p>
           </div>
         </div>

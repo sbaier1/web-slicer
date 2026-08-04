@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
           className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700/80 border border-slate-700/60 text-slate-200 font-semibold flex items-center gap-1.5 transition-all shadow-sm"
         >
           <Upload className="w-3.5 h-3.5 text-blue-400" />
-          Add Model (STL/3MF)
+          Add Model (STL/OBJ/3MF)
         </button>
 
         {/* Sample Models Dropdown */}

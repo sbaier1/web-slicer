@@ -2,8 +2,14 @@ import React, { useState, useRef } from 'react';
 import type {
   SlicerSettings,
   InfillPattern,
+  SupportStyle,
+  SupportPlacement,
+  SeamPosition,
+  SlicingMode,
+  GCodeFlavor,
   SlicerEngineType,
   RemoteSlicerConfig,
+  SettingsDisplayMode,
 } from '../../types/slicer';
 import { PRINTER_PRESETS, FILAMENT_PRESETS } from '../../constants/presets';
 import {
@@ -17,6 +23,8 @@ import {
   Code,
   Download,
   Upload,
+  Gauge,
+  Sparkles,
 } from 'lucide-react';
 
 interface SliceSettingsPanelProps {
@@ -37,6 +45,7 @@ export const SliceSettingsPanel: React.FC<SliceSettingsPanelProps> = ({
   onUpdateRemoteConfig,
 }) => {
   const [activeTab, setActiveTab] = useState<'preset' | 'quality' | 'infill' | 'supports' | 'speed' | 'engine'>('preset');
+  const [displayMode, setDisplayMode] = useState<SettingsDisplayMode>('basic');
 
   // Resizable sidebar width state
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
@@ -114,7 +123,6 @@ export const SliceSettingsPanel: React.FC<SliceSettingsPanelProps> = ({
         try {
           const parsed = JSON.parse(e.target?.result as string);
 
-          // Import printer connection parameters if present
           if (parsed.printerConnection || parsed.url) {
             const conn = parsed.printerConnection || {
               type: parsed.printerType || 'moonraker',
@@ -147,6 +155,28 @@ export const SliceSettingsPanel: React.FC<SliceSettingsPanelProps> = ({
         className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500/50 transition-colors z-30"
         title="Drag to resize sidebar width"
       />
+
+      {/* Mode Selector (Basic / Advanced / Expert) */}
+      <div className="bg-slate-950 border-b border-slate-800 p-2 flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1">
+          <Sparkles className="w-3 h-3 text-amber-400" /> Mode
+        </span>
+        <div className="flex bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+          {(['basic', 'advanced', 'expert'] as SettingsDisplayMode[]).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setDisplayMode(mode)}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-bold capitalize transition-all ${
+                displayMode === mode
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Header Tabs */}
       <div className="flex border-b border-slate-800 bg-slate-950/50 p-1 gap-1 overflow-x-auto">
@@ -185,6 +215,15 @@ export const SliceSettingsPanel: React.FC<SliceSettingsPanelProps> = ({
         >
           <Shield className="w-3.5 h-3.5" />
           Support
+        </button>
+        <button
+          onClick={() => setActiveTab('speed')}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-medium whitespace-nowrap transition-all ${
+            activeTab === 'speed' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+          }`}
+        >
+          <Gauge className="w-3.5 h-3.5" />
+          Speed
         </button>
         <button
           onClick={() => setActiveTab('engine')}
@@ -310,45 +349,55 @@ export const SliceSettingsPanel: React.FC<SliceSettingsPanelProps> = ({
               </div>
             </div>
 
+            {/* Expert Mode Options */}
+            {displayMode === 'expert' && (
+              <div className="space-y-3 pt-3 border-t border-slate-800">
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                  <span className="text-slate-400 text-[10px] block mb-1">G-Code Flavor</span>
+                  <select
+                    value={settings.gcodeFlavor || 'klipper'}
+                    onChange={(e) => onUpdateSettings({ gcodeFlavor: e.target.value as GCodeFlavor })}
+                    className="w-full bg-transparent text-slate-200 font-mono text-xs font-semibold outline-none"
+                  >
+                    <option value="klipper">Klipper</option>
+                    <option value="marlin">Marlin 2</option>
+                    <option value="reprap">RepRapFirmware</option>
+                    <option value="bambu">Bambu Lab Bus</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
             {/* Klipper Custom G-Code Macros */}
-            <div className="space-y-3 pt-3 border-t border-slate-800">
-              <label className="text-slate-300 font-semibold flex items-center gap-1.5">
-                <Code className="w-3.5 h-3.5 text-emerald-400" /> Klipper G-Code Macros
-              </label>
+            {(displayMode === 'advanced' || displayMode === 'expert') && (
+              <div className="space-y-3 pt-3 border-t border-slate-800">
+                <label className="text-slate-300 font-semibold flex items-center gap-1.5">
+                  <Code className="w-3.5 h-3.5 text-emerald-400" /> Klipper G-Code Macros
+                </label>
 
-              <div>
-                <label className="text-slate-400 text-[10px] block mb-1 font-mono">Start G-Code Macro</label>
-                <textarea
-                  rows={3}
-                  value={settings.startGCode || ''}
-                  onChange={(e) => onUpdateSettings({ startGCode: e.target.value })}
-                  placeholder="PRINT_START EXTRUDER={nozzleTemp} BED={bedTemp}"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] font-mono text-emerald-300 focus:border-blue-500 outline-none resize-y"
-                />
-              </div>
+                <div>
+                  <label className="text-slate-400 text-[10px] block mb-1 font-mono">Start G-Code Macro</label>
+                  <textarea
+                    rows={2}
+                    value={settings.startGCode || ''}
+                    onChange={(e) => onUpdateSettings({ startGCode: e.target.value })}
+                    placeholder="START_PRINT"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] font-mono text-emerald-300 focus:border-blue-500 outline-none resize-y"
+                  />
+                </div>
 
-              <div>
-                <label className="text-slate-400 text-[10px] block mb-1 font-mono">End G-Code Macro</label>
-                <textarea
-                  rows={2}
-                  value={settings.endGCode || ''}
-                  onChange={(e) => onUpdateSettings({ endGCode: e.target.value })}
-                  placeholder="PRINT_END"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] font-mono text-emerald-300 focus:border-blue-500 outline-none resize-y"
-                />
+                <div>
+                  <label className="text-slate-400 text-[10px] block mb-1 font-mono">End G-Code Macro</label>
+                  <textarea
+                    rows={2}
+                    value={settings.endGCode || ''}
+                    onChange={(e) => onUpdateSettings({ endGCode: e.target.value })}
+                    placeholder="END_PRINT"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] font-mono text-emerald-300 focus:border-blue-500 outline-none resize-y"
+                  />
+                </div>
               </div>
-
-              <div>
-                <label className="text-slate-400 text-[10px] block mb-1 font-mono">Layer Change G-Code</label>
-                <textarea
-                  rows={2}
-                  value={settings.layerChangeGCode || ''}
-                  onChange={(e) => onUpdateSettings({ layerChangeGCode: e.target.value })}
-                  placeholder=";AFTER_LAYER_CHANGE"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-[11px] font-mono text-emerald-300 focus:border-blue-500 outline-none resize-y"
-                />
-              </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -400,30 +449,78 @@ export const SliceSettingsPanel: React.FC<SliceSettingsPanelProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
-                <span className="text-slate-400 text-[10px] block mb-1">Top Solid Layers</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="15"
-                  value={settings.topSolidLayers}
-                  onChange={(e) => onUpdateSettings({ topSolidLayers: parseInt(e.target.value) || 4 })}
-                  className="w-full bg-transparent text-slate-200 font-mono text-sm font-semibold outline-none"
-                />
+            {(displayMode === 'advanced' || displayMode === 'expert') && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                  <span className="text-slate-400 text-[10px] block mb-1">Top Solid Layers</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="15"
+                    value={settings.topSolidLayers}
+                    onChange={(e) => onUpdateSettings({ topSolidLayers: parseInt(e.target.value) || 4 })}
+                    className="w-full bg-transparent text-slate-200 font-mono text-sm font-semibold outline-none"
+                  />
+                </div>
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                  <span className="text-slate-400 text-[10px] block mb-1">Bottom Solid Layers</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="15"
+                    value={settings.bottomSolidLayers}
+                    onChange={(e) => onUpdateSettings({ bottomSolidLayers: parseInt(e.target.value) || 3 })}
+                    className="w-full bg-transparent text-slate-200 font-mono text-sm font-semibold outline-none"
+                  />
+                </div>
               </div>
-              <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
-                <span className="text-slate-400 text-[10px] block mb-1">Bottom Solid Layers</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="15"
-                  value={settings.bottomSolidLayers}
-                  onChange={(e) => onUpdateSettings({ bottomSolidLayers: parseInt(e.target.value) || 3 })}
-                  className="w-full bg-transparent text-slate-200 font-mono text-sm font-semibold outline-none"
-                />
+            )}
+
+            {/* Advanced Seam & Slicing Mode Options */}
+            {(displayMode === 'advanced' || displayMode === 'expert') && (
+              <div className="space-y-3 pt-3 border-t border-slate-800">
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                  <span className="text-slate-400 text-[10px] block mb-1">Seam Position</span>
+                  <select
+                    value={settings.seamPosition || 'aligned'}
+                    onChange={(e) => onUpdateSettings({ seamPosition: e.target.value as SeamPosition })}
+                    className="w-full bg-transparent text-slate-200 font-mono text-xs font-semibold outline-none"
+                  >
+                    <option value="aligned">Aligned (Sharpest Corner)</option>
+                    <option value="nearest">Nearest</option>
+                    <option value="random">Random</option>
+                    <option value="rear">Rear</option>
+                  </select>
+                </div>
               </div>
-            </div>
+            )}
+
+            {displayMode === 'expert' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                  <span className="text-slate-400 text-[10px] block mb-1">Slicing Mode</span>
+                  <select
+                    value={settings.slicingMode || 'regular'}
+                    onChange={(e) => onUpdateSettings({ slicingMode: e.target.value as SlicingMode })}
+                    className="w-full bg-transparent text-slate-200 font-mono text-xs font-semibold outline-none"
+                  >
+                    <option value="regular">Regular</option>
+                    <option value="close_holes">Close Holes</option>
+                    <option value="even_odd">Even Odd</option>
+                  </select>
+                </div>
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                  <span className="text-slate-400 text-[10px] block mb-1">Elephant Foot (mm)</span>
+                  <input
+                    type="number"
+                    step="0.05"
+                    value={settings.elephantFootCompensation || 0.15}
+                    onChange={(e) => onUpdateSettings({ elephantFootCompensation: parseFloat(e.target.value) || 0 })}
+                    className="w-full bg-transparent text-slate-200 font-mono text-sm font-semibold outline-none"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -454,7 +551,7 @@ export const SliceSettingsPanel: React.FC<SliceSettingsPanelProps> = ({
             <div className="space-y-2 pt-2">
               <label className="text-slate-300 font-semibold block">Infill Pattern</label>
               <div className="grid grid-cols-2 gap-2">
-                {(['gyroid', 'grid', 'honeycomb', 'triangles', 'cubic', 'concentric'] as InfillPattern[]).map((pattern) => (
+                {(['gyroid', 'grid', 'honeycomb', 'triangles', 'cubic', 'concentric', 'rectilinear', 'adaptivecubic'] as InfillPattern[]).map((pattern) => (
                   <button
                     key={pattern}
                     onClick={() => onUpdateSettings({ infillPattern: pattern })}
@@ -469,6 +566,18 @@ export const SliceSettingsPanel: React.FC<SliceSettingsPanelProps> = ({
                 ))}
               </div>
             </div>
+
+            {(displayMode === 'advanced' || displayMode === 'expert') && (
+              <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                <span className="text-slate-400 text-[10px] block mb-1">Infill Pattern Angle (°)</span>
+                <input
+                  type="number"
+                  value={settings.infillAngle || 45}
+                  onChange={(e) => onUpdateSettings({ infillAngle: parseInt(e.target.value) || 45 })}
+                  className="w-full bg-transparent text-slate-200 font-mono text-sm font-semibold outline-none"
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -490,26 +599,19 @@ export const SliceSettingsPanel: React.FC<SliceSettingsPanelProps> = ({
                 <div className="space-y-1">
                   <label className="text-slate-400 text-[10px] uppercase tracking-wider font-semibold">Support Structure Style</label>
                   <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => onUpdateSettings({ supportStyle: 'normal' })}
-                      className={`p-2.5 rounded-lg border text-center font-medium transition-all ${
-                        settings.supportStyle === 'normal'
-                          ? 'bg-blue-600/20 border-blue-500 text-blue-300'
-                          : 'bg-slate-950 border-slate-800 text-slate-400'
-                      }`}
-                    >
-                      Normal / Snug
-                    </button>
-                    <button
-                      onClick={() => onUpdateSettings({ supportStyle: 'tree' })}
-                      className={`p-2.5 rounded-lg border text-center font-medium transition-all ${
-                        settings.supportStyle === 'tree'
-                          ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300'
-                          : 'bg-slate-950 border-slate-800 text-slate-400'
-                      }`}
-                    >
-                      Tree / Organic
-                    </button>
+                    {(['normal', 'tree', 'snug', 'organic'] as SupportStyle[]).map((style) => (
+                      <button
+                        key={style}
+                        onClick={() => onUpdateSettings({ supportStyle: style })}
+                        className={`p-2.5 rounded-lg border text-center font-medium capitalize transition-all ${
+                          settings.supportStyle === style
+                            ? 'bg-blue-600/20 border-blue-500 text-blue-300'
+                            : 'bg-slate-950 border-slate-800 text-slate-400'
+                        }`}
+                      >
+                        {style}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -522,12 +624,123 @@ export const SliceSettingsPanel: React.FC<SliceSettingsPanelProps> = ({
                     className="w-full bg-transparent text-slate-200 font-mono text-sm font-semibold outline-none"
                   />
                 </div>
+
+                {(displayMode === 'advanced' || displayMode === 'expert') && (
+                  <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                    <span className="text-slate-400 text-[10px] block mb-1">Support Placement</span>
+                    <select
+                      value={settings.supportPlacement || 'buildplate'}
+                      onChange={(e) => onUpdateSettings({ supportPlacement: e.target.value as SupportPlacement })}
+                      className="w-full bg-transparent text-slate-200 font-mono text-xs font-semibold outline-none"
+                    >
+                      <option value="buildplate font-semibold">On Build Plate Only</option>
+                      <option value="everywhere">Everywhere</option>
+                    </select>
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
 
-        {/* TAB 5: SLICING ENGINE SELECTION */}
+        {/* TAB 5: SPEED & RETRACTION */}
+        {activeTab === 'speed' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                <span className="text-slate-400 text-[10px] block mb-1">Outer Wall (mm/s)</span>
+                <input
+                  type="number"
+                  value={settings.outerWallSpeed}
+                  onChange={(e) => onUpdateSettings({ outerWallSpeed: parseInt(e.target.value) || 60 })}
+                  className="w-full bg-transparent text-slate-200 font-mono text-sm font-semibold outline-none"
+                />
+              </div>
+              <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                <span className="text-slate-400 text-[10px] block mb-1">Infill Speed (mm/s)</span>
+                <input
+                  type="number"
+                  value={settings.infillSpeed}
+                  onChange={(e) => onUpdateSettings({ infillSpeed: parseInt(e.target.value) || 120 })}
+                  className="w-full bg-transparent text-slate-200 font-mono text-sm font-semibold outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                <span className="text-slate-400 text-[10px] block mb-1">Travel Speed (mm/s)</span>
+                <input
+                  type="number"
+                  value={settings.travelSpeed}
+                  onChange={(e) => onUpdateSettings({ travelSpeed: parseInt(e.target.value) || 200 })}
+                  className="w-full bg-transparent text-slate-200 font-mono text-sm font-semibold outline-none"
+                />
+              </div>
+              <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                <span className="text-slate-400 text-[10px] block mb-1 font-mono">Retraction (mm)</span>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={settings.retractionDistance}
+                  onChange={(e) => onUpdateSettings({ retractionDistance: parseFloat(e.target.value) || 0.8 })}
+                  className="w-full bg-transparent text-slate-200 font-mono text-sm font-semibold outline-none"
+                />
+              </div>
+            </div>
+
+            {(displayMode === 'advanced' || displayMode === 'expert') && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                  <span className="text-slate-400 text-[10px] block mb-1 font-mono">Retract Speed (mm/s)</span>
+                  <input
+                    type="number"
+                    value={settings.retractionSpeed}
+                    onChange={(e) => onUpdateSettings({ retractionSpeed: parseInt(e.target.value) || 40 })}
+                    className="w-full bg-transparent text-slate-200 font-mono text-sm font-semibold outline-none"
+                  />
+                </div>
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                  <span className="text-slate-400 text-[10px] block mb-1 font-mono">Z-Hop Lift (mm)</span>
+                  <input
+                    type="number"
+                    step="0.05"
+                    value={settings.zHop}
+                    onChange={(e) => onUpdateSettings({ zHop: parseFloat(e.target.value) || 0.2 })}
+                    className="w-full bg-transparent text-slate-200 font-mono text-sm font-semibold outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {displayMode === 'expert' && (
+              <div className="space-y-3 pt-2 border-t border-slate-800">
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                  <span className="text-slate-400 text-[10px] block mb-1">Max Acceleration (mm/s²)</span>
+                  <input
+                    type="number"
+                    step="500"
+                    value={settings.maxAcceleration || 3000}
+                    onChange={(e) => onUpdateSettings({ maxAcceleration: parseInt(e.target.value) || 3000 })}
+                    className="w-full bg-transparent text-slate-200 font-mono text-sm font-semibold outline-none"
+                  />
+                </div>
+
+                <label className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800 rounded-lg cursor-pointer">
+                  <span className="text-slate-300 font-semibold">Wipe on Retract</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.wipeOnRetract ?? true}
+                    onChange={(e) => onUpdateSettings({ wipeOnRetract: e.target.checked })}
+                    className="w-4 h-4 accent-blue-600 rounded"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 6: SLICING ENGINE SELECTION */}
         {activeTab === 'engine' && (
           <div className="space-y-4">
             <div className="space-y-2">

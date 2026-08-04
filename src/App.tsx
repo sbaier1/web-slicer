@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
-import { STLLoader, STLExporter } from 'three-stdlib';
+import { STLExporter } from 'three-stdlib';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { parseModelGeometry } from './services/modelLoader';
 import confetti from 'canvas-confetti';
 
 import { Header } from './components/Header';
@@ -140,47 +142,46 @@ export function App() {
   // Printer Upload Modal
   const [isPrinterModalOpen, setIsPrinterModalOpen] = useState(false);
 
-  // Handle STL / 3MF file upload
+  // Handle STL / OBJ / 3MF file upload
   const handleFileUpload = useCallback(async (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const buffer = e.target?.result as ArrayBuffer;
       if (!buffer) return;
 
-      const loader = new STLLoader();
-      const geometry = loader.parse(buffer);
-      geometry.center();
-      geometry.computeBoundingBox();
+      try {
+        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'stl';
+        const geometry = parseModelGeometry(buffer, file.name);
 
-      const bb = geometry.boundingBox!;
-      const sizeX = bb.max.x - bb.min.x;
-      const sizeY = bb.max.y - bb.min.y;
-      const sizeZ = bb.max.z - bb.min.z;
+        const bb = geometry.boundingBox!;
+        const sizeX = bb.max.x - bb.min.x;
+        const sizeY = bb.max.y - bb.min.y;
+        const sizeZ = bb.max.z - bb.min.z;
 
-      // Position bottom face at Z=0
-      geometry.translate(0, 0, sizeZ / 2);
+        const newModel: Model3D = {
+          id: `model-${Date.now()}`,
+          name: file.name,
+          geometry,
+          position: { x: settings.bed.width / 2, y: settings.bed.depth / 2, z: 0 },
+          rotation: { x: 0, y: 0, z: 0 },
+          scale: { x: 1, y: 1, z: 1 },
+          size: { x: sizeX, y: sizeY, z: sizeZ },
+          originalSize: { x: sizeX, y: sizeY, z: sizeZ },
+          fileSize: file.size,
+          fileType: fileExt,
+          color: '#38bdf8',
+          visible: true,
+        };
 
-      const newModel: Model3D = {
-        id: `model-${Date.now()}`,
-        name: file.name,
-        geometry,
-        position: { x: settings.bed.width / 2, y: settings.bed.depth / 2, z: 0 },
-        rotation: { x: 0, y: 0, z: 0 },
-        scale: { x: 1, y: 1, z: 1 },
-        size: { x: sizeX, y: sizeY, z: sizeZ },
-        originalSize: { x: sizeX, y: sizeY, z: sizeZ },
-        fileSize: file.size,
-        fileType: file.name.split('.').pop() || 'stl',
-        color: '#38bdf8',
-        visible: true,
-      };
-
-      setModels((prev) => [...prev, newModel]);
-      setSelectedModelId(newModel.id);
+        setModels((prev) => [...prev, newModel]);
+        setSelectedModelId(newModel.id);
+      } catch (err: any) {
+        alert(`Failed to parse 3D model (${file.name}): ${err.message || err}`);
+      }
     };
 
     reader.readAsArrayBuffer(file);
-  }, []);
+  }, [settings.bed.width, settings.bed.depth]);
 
   // Handle sample model selection
   const handleSelectSampleModel = (sampleId: string) => {
@@ -330,20 +331,54 @@ export function App() {
           setSlicingStepMessage(msg);
         });
       } else {
-        // Remote OrcaSlicer API Engine
-        const modelToSlice = models[0];
+        // Remote OrcaSlicer API Engine: Bake exact 3D transformations (Rotation, Scale, Bed Position)
+        // into exported STL mesh using Three.js world matrices so OrcaSlicer receives the exact 3D orientation
         const exporter = new STLExporter();
-        const tempMesh = new THREE.Mesh(modelToSlice.geometry);
+        const transformedGeometries: THREE.BufferGeometry[] = [];
+
+        for (const m of models) {
+          if (!m.visible) continue;
+          const clonedGeo = m.geometry.clone();
+
+          const scaleMatrix = new THREE.Matrix4().makeScale(m.scale.x, m.scale.y, m.scale.z);
+          const rotMatrix = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(m.rotation.x, m.rotation.y, m.rotation.z));
+          const rotScaleMatrix = new THREE.Matrix4().multiplyMatrices(scaleMatrix, rotMatrix);
+
+          clonedGeo.applyMatrix4(rotScaleMatrix);
+          clonedGeo.computeBoundingBox();
+
+          let zOffset = 0;
+          if (clonedGeo.boundingBox) {
+            zOffset = -clonedGeo.boundingBox.min.z;
+          }
+
+          const transMatrix = new THREE.Matrix4().makeTranslation(
+            m.position.x,
+            m.position.y,
+            m.position.z + zOffset
+          );
+          clonedGeo.applyMatrix4(transMatrix);
+          transformedGeometries.push(clonedGeo);
+        }
+
+        const mergedGeo = transformedGeometries.length === 1
+          ? transformedGeometries[0]
+          : mergeGeometries(transformedGeometries, false) || transformedGeometries[0];
+
+        const tempMesh = new THREE.Mesh(mergedGeo);
         const stlString = exporter.parse(tempMesh) as string;
         const blob = new Blob([stlString], { type: 'model/stl' });
 
+        const modelName = models[0]?.name.replace(/\.[^/.]+$/, '') || 'model';
+        const sliceFileName = `${modelName}.stl`;
+
         result = await sliceWithRemoteOrcaSlicer(
           blob,
-          modelToSlice.name,
+          sliceFileName,
           {
-            position: modelToSlice.position,
-            rotation: modelToSlice.rotation,
-            scale: modelToSlice.scale,
+            position: { x: 0, y: 0, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
           },
           settings,
           remoteConfig,

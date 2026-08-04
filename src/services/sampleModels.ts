@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { OBJLoader } from 'three-stdlib';
+import { extractGeometryFromObject } from './modelLoader';
 
 /**
  * Generates built-in sample 3D geometries for instant testing & slicing
@@ -64,6 +66,33 @@ export function createGearGeometry(): THREE.BufferGeometry {
   return geometry;
 }
 
+export function createOBJPyramidGeometry(): THREE.BufferGeometry {
+  const objText = `
+# OBJ Sample Pyramid
+v -15 -15 0
+v 15 -15 0
+v 15 15 0
+v -15 15 0
+v 0 0 25
+f 1 2 5
+f 2 3 5
+f 3 4 5
+f 4 1 5
+f 4 3 2 1
+`;
+  const loader = new OBJLoader();
+  const group = loader.parse(objText);
+  const geo = extractGeometryFromObject(group);
+  if (!geo.getAttribute('normal')) {
+    geo.computeVertexNormals();
+  }
+  geo.center();
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox!;
+  geo.translate(0, 0, (bb.max.z - bb.min.z) / 2);
+  return geo;
+}
+
 export const SAMPLE_MODELS = [
   {
     id: 'calibration-cube',
@@ -82,5 +111,11 @@ export const SAMPLE_MODELS = [
     name: 'Low Poly Test Cone',
     description: 'Quick test object with overhangs',
     generator: createLowPolyBunnyGeometry,
+  },
+  {
+    id: 'obj-pyramid',
+    name: 'OBJ Sample Pyramid',
+    description: '3D object parsed from Wavefront OBJ format',
+    generator: createOBJPyramidGeometry,
   },
 ];

@@ -25,23 +25,45 @@ export type FilamentProfile = {
   pricePerKg: number; // USD
 };
 
-export type InfillPattern = 'gyroid' | 'grid' | 'honeycomb' | 'triangles' | 'cubic' | 'concentric';
+export type InfillPattern =
+  | 'gyroid'
+  | 'grid'
+  | 'honeycomb'
+  | 'triangles'
+  | 'cubic'
+  | 'concentric'
+  | 'rectilinear'
+  | 'adaptivecubic';
 
-export type SupportStyle = 'normal' | 'tree';
+export type SupportStyle = 'normal' | 'tree' | 'snug' | 'organic';
 
 export type SupportPlacement = 'everywhere' | 'buildplate';
 
+export type SeamPosition = 'aligned' | 'nearest' | 'random' | 'rear';
+
+export type SlicingMode = 'regular' | 'close_holes' | 'even_odd';
+
+export type GCodeFlavor = 'klipper' | 'marlin' | 'reprap' | 'bambu';
+
+export type SettingsDisplayMode = 'basic' | 'advanced' | 'expert';
+
 export type SlicerSettings = {
-  // Quality
+  // Quality & Layers
   layerHeight: number; // mm
   firstLayerHeight: number; // mm
   wallPerimeters: number;
   topSolidLayers: number;
   bottomSolidLayers: number;
+  seamPosition?: SeamPosition;
+  slicingMode?: SlicingMode;
+  elephantFootCompensation?: number; // mm
 
   // Infill
   infillDensity: number; // 0-100%
   infillPattern: InfillPattern;
+  infillAngle?: number; // degrees
+  topInfillPattern?: string;
+  bottomInfillPattern?: string;
 
   // Supports
   enableSupports: boolean;
@@ -52,22 +74,31 @@ export type SlicerSettings = {
   // Speeds (mm/s)
   printSpeed: number;
   outerWallSpeed: number;
+  innerWallSpeed?: number;
   infillSpeed: number;
+  solidInfillSpeed?: number;
   travelSpeed: number;
+  firstLayerSpeed?: number;
+  maxAcceleration?: number; // mm/s²
 
   // Temperatures & Cooling
   nozzleTemp: number;
   bedTemp: number;
   fanSpeed: number; // 0-100%
+  minFanSpeed?: number;
+  maxFanSpeed?: number;
 
   // Retraction
   retractionDistance: number; // mm
   retractionSpeed: number; // mm/s
+  deretractionSpeed?: number; // mm/s
   zHop: number; // mm
+  wipeOnRetract?: boolean;
 
   // Bed & Printer
   bed: PrinterBed;
   filament: FilamentProfile;
+  gcodeFlavor?: GCodeFlavor;
 
   // Custom Klipper G-Code Scripts / Macros
   startGCode?: string;
@@ -97,7 +128,14 @@ export type RemoteSlicerConfig = {
   apiKey?: string;
 };
 
-export type GCodeFeatureType = 'outer_wall' | 'inner_wall' | 'infill' | 'solid_infill' | 'support' | 'travel' | 'first_layer';
+export type GCodeFeatureType =
+  | 'outer_wall'
+  | 'inner_wall'
+  | 'infill'
+  | 'solid_infill'
+  | 'support'
+  | 'travel'
+  | 'first_layer';
 
 export type GCodeSegment = {
   type: GCodeFeatureType;

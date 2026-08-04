@@ -139,35 +139,57 @@ export const FILAMENT_PRESETS: FilamentProfile[] = [
 ];
 
 export const DEFAULT_SLICER_SETTINGS: SlicerSettings = {
+  // Quality & Layers
   layerHeight: 0.2,
   firstLayerHeight: 0.24,
   wallPerimeters: 3,
   topSolidLayers: 4,
   bottomSolidLayers: 3,
+  seamPosition: 'aligned',
+  slicingMode: 'regular',
+  elephantFootCompensation: 0.15,
 
+  // Infill
   infillDensity: 15,
   infillPattern: 'gyroid',
+  infillAngle: 45,
+  topInfillPattern: 'monotonic',
+  bottomInfillPattern: 'monotonic',
 
+  // Supports
   enableSupports: false,
   supportStyle: 'normal',
   supportPlacement: 'buildplate',
   supportAngle: 45,
 
+  // Speeds & Accelerations
   printSpeed: 100,
   outerWallSpeed: 60,
+  innerWallSpeed: 80,
   infillSpeed: 120,
+  solidInfillSpeed: 100,
   travelSpeed: 200,
+  firstLayerSpeed: 30,
+  maxAcceleration: 3000,
 
+  // Temperatures & Cooling
   nozzleTemp: 210,
   bedTemp: 60,
   fanSpeed: 100,
+  minFanSpeed: 35,
+  maxFanSpeed: 100,
 
+  // Retraction
   retractionDistance: 0.8,
   retractionSpeed: 40,
+  deretractionSpeed: 40,
   zHop: 0.2,
+  wipeOnRetract: true,
 
+  // Bed & Printer
   bed: PRINTER_PRESETS[0],
   filament: FILAMENT_PRESETS[0],
+  gcodeFlavor: 'klipper',
 
   // Klipper Macro Defaults
   startGCode: 'START_PRINT',
